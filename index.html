@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>P2P File Transfer (PeerJS Cloud - Debug Enhanced v2)</title>
+    <title>P2P File Transfer (PeerJS Cloud - Uint8Array Fix)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <style>
@@ -318,7 +318,6 @@
         }
 
         function handleReceivedData(data, fromPeer) {
-            // データ型とコンストラクタ名をログに出力
             console.log(`Data received from ${fromPeer}, type: ${typeof data}, constructor: ${data ? data.constructor.name : 'null/undefined'}`, data);
             if (typeof data === 'string') {
                 try {
@@ -365,12 +364,13 @@
                     updateStatus('<strong>エラー:</strong> 受信したJSONデータの解析に失敗しました。', true);
                     console.error("JSON parse error:", e, "Data:", data);
                 }
-            } else if (data instanceof ArrayBuffer) {
+            } else if (data instanceof ArrayBuffer || data instanceof Uint8Array) { // Uint8Arrayのチェックを追加
                 if (!fileInfoForReceiver) {
                     updateStatus('<strong>警告:</strong> ファイル情報がない状態でチャンクデータを受信しました。このチャンクは無視されます。', true);
                     console.warn('Chunk received before file-info. Ignoring chunk from peer:', fromPeer, 'Chunk size:', data.byteLength, 'Current fileInfo:', fileInfoForReceiver);
                     return;
                 }
+                // ArrayBufferでもUint8Arrayでも、そのままBlobの材料として使える
                 receivedFileData.push(data);
                 const receivedSize = receivedFileData.reduce((sum, chunk) => sum + chunk.byteLength, 0);
                 const progress = fileInfoForReceiver.size > 0 ? ((receivedSize / fileInfoForReceiver.size) * 100).toFixed(1) : 0;
@@ -398,8 +398,12 @@
                     }
                     console.warn("Object.prototype.toString.call(data):", Object.prototype.toString.call(data));
                     // もしオブジェクトならキーを列挙してみる
-                    if (typeof data === 'object') {
-                        console.warn("Keys of the object:", Object.keys(data));
+                    if (typeof data === 'object' && data !== null) { // nullチェックを追加
+                        try {
+                            console.warn("Keys of the object:", Object.keys(data));
+                        } catch (e) {
+                            console.warn("Could not get keys of the object:", e);
+                        }
                     }
                 }
                 console.warn("Actual data object received:", data); // オブジェクトそのものをログに出力
