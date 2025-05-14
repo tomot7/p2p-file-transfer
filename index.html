@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>P2P File Transfer (PeerJS Cloud - Uint8Array Fix)</title>
+    <title>P2P File Transfer (PeerJS Cloud - GitHub Style Buttons)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <style>
@@ -17,29 +17,32 @@
             max-height: 12em;
             overflow-y: auto;
         }
+        /* GitHub-like Button Styles */
         .btn {
-            /* Base button style with explicit border */
-            @apply py-2.5 px-5 rounded-lg font-semibold shadow-md hover:shadow-lg transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-offset-2 border-2;
+            @apply py-2 px-4 rounded-md font-semibold text-sm leading-5 transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-offset-2;
+            border: 1px solid; /* Explicit border for all buttons */
         }
-        .btn-primary {
-            /* Border color slightly darker than background for visibility */
-            @apply bg-blue-600 hover:bg-blue-700 text-white border-blue-700 hover:border-blue-800 focus:ring-blue-500;
-        }
-        .btn-success {
-            /* Border color slightly darker than background for visibility */
+        .btn-primary { /* Green button like GitHub's "Code" button */
             @apply bg-green-600 hover:bg-green-700 text-white border-green-700 hover:border-green-800 focus:ring-green-500;
         }
-        .btn-danger {
-            /* Border color slightly darker than background for visibility */
-            @apply bg-red-600 hover:bg-red-700 text-white border-red-700 hover:border-red-800 focus:ring-red-500;
+        .btn-secondary { /* Gray button like GitHub's secondary buttons */
+            @apply bg-gray-700 hover:bg-gray-800 text-white border-gray-800 hover:border-gray-900 focus:ring-gray-600;
+        }
+        .btn-danger { /* For "Reject" - could be red or a distinct gray */
+            @apply bg-gray-200 hover:bg-gray-300 text-gray-800 border-gray-300 hover:border-gray-400 focus:ring-gray-400;
+            /* Or for a red destructive button:
+            @apply bg-red-600 hover:bg-red-700 text-white border-red-700 hover:border-red-800 focus:ring-red-500; */
+        }
+        .btn-success { /* For "Accept" - same as primary for now */
+             @apply bg-green-600 hover:bg-green-700 text-white border-green-700 hover:border-green-800 focus:ring-green-500;
         }
         .btn-disabled {
-            /* Disabled buttons should also have a visible border */
-            @apply bg-gray-300 text-gray-500 cursor-not-allowed shadow-none hover:shadow-none border-gray-400;
+            @apply bg-gray-100 text-gray-400 cursor-not-allowed border-gray-300;
         }
+
         .input-field {
             /* Base input style with explicit border */
-            @apply border-2 border-gray-400 rounded-lg p-3 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow duration-150 shadow-sm;
+            @apply border-2 border-gray-300 rounded-md p-2.5 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow duration-150 shadow-sm;
         }
         .section-container {
             @apply mb-6 p-6 bg-white rounded-xl shadow-lg border border-gray-200;
@@ -59,19 +62,29 @@
         }
         /* Custom style for file input button appearance */
         .file-input-styled::-webkit-file-upload-button {
-            /* visibility: hidden; */ /* Hides the default "Choose File" button */
+             visibility: hidden;
+             width: 0;
+             height: 0;
+             padding: 0;
+             margin:0;
         }
         .file-input-styled::before {
             content: 'ファイルを選択'; /* Custom button text */
-            @apply inline-block bg-blue-100 hover:bg-blue-200 text-blue-700 font-semibold py-2.5 px-4 rounded-lg cursor-pointer transition-colors duration-150 mr-3 border-2 border-blue-400 hover:border-blue-500;
+            @apply inline-block bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold py-2 px-4 rounded-md cursor-pointer transition-colors duration-150 border border-gray-400 hover:border-gray-500;
+            /* Match secondary button style */
         }
         .file-input-styled:hover::before {
-             @apply shadow-md;
+             @apply shadow-sm;
         }
         input[type="file"].file-input-styled {
-            /* Style for the container of the custom button and the file name text */
-            @apply border-2 border-gray-400 rounded-lg p-0 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow duration-150 shadow-sm flex items-center;
+            @apply border-2 border-gray-300 rounded-md p-0 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow duration-150 shadow-sm flex items-center text-sm text-gray-700;
+            /* The text part of the input (file name) styling */
         }
+        /* Ensure file name text is visible next to the custom button */
+        input[type="file"].file-input-styled {
+            padding-left: 0.5rem; /* Add some padding for the file name text */
+        }
+
 
     </style>
 </head>
@@ -103,7 +116,7 @@
             <h2 class="section-title">ファイル送信</h2>
             <div class="space-y-3">
                  <label for="fileInput" class="block text-sm font-medium text-gray-700 mb-1">送信するファイルを選択:</label>
-                <input type="file" id="fileInput" class="file-input-styled w-full text-sm text-gray-500 file:border-0 file:font-semibold">
+                <input type="file" id="fileInput" class="file-input-styled w-full">
                 <button id="sendBtn" class="btn btn-primary w-full">選択したファイルを送信</button>
             </div>
         </section>
@@ -122,7 +135,7 @@
 
     <div id="connectionRequestModal" class="modal-container hidden" aria-labelledby="modal-title-request" role="dialog" aria-modal="true">
         <div class="modal-overlay" aria-hidden="true"></div>
-        <div class="modal-panel p-6 border-4 border-blue-500">
+        <div class="modal-panel p-6 border-2 border-gray-300"> {/* Modal border consistent with other elements */}
             <div class="sm:flex sm:items-start">
                 <div class="mx-auto flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-blue-100 sm:mx-0 sm:h-10 sm:w-10">
                     <svg class="h-6 w-6 text-blue-600" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true">
