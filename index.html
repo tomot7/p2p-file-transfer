@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>P2P File Transfer (PeerJS Cloud - GitHub Style Buttons)</title>
+    <title>P2P File Transfer (PeerJS Cloud - Custom ID)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <style>
@@ -17,32 +17,23 @@
             max-height: 12em;
             overflow-y: auto;
         }
-        /* GitHub-like Button Styles */
         .btn {
-            @apply py-2 px-4 rounded-md font-semibold text-sm leading-5 transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-offset-2;
-            border: 1px solid; /* Explicit border for all buttons */
+            @apply py-2.5 px-5 rounded-lg font-semibold shadow-md hover:shadow-lg transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-offset-2 border-2;
         }
-        .btn-primary { /* Green button like GitHub's "Code" button */
+        .btn-primary {
+            @apply bg-blue-600 hover:bg-blue-700 text-white border-blue-700 hover:border-blue-800 focus:ring-blue-500;
+        }
+        .btn-success {
             @apply bg-green-600 hover:bg-green-700 text-white border-green-700 hover:border-green-800 focus:ring-green-500;
         }
-        .btn-secondary { /* Gray button like GitHub's secondary buttons */
-            @apply bg-gray-700 hover:bg-gray-800 text-white border-gray-800 hover:border-gray-900 focus:ring-gray-600;
-        }
-        .btn-danger { /* For "Reject" - could be red or a distinct gray */
-            @apply bg-gray-200 hover:bg-gray-300 text-gray-800 border-gray-300 hover:border-gray-400 focus:ring-gray-400;
-            /* Or for a red destructive button:
-            @apply bg-red-600 hover:bg-red-700 text-white border-red-700 hover:border-red-800 focus:ring-red-500; */
-        }
-        .btn-success { /* For "Accept" - same as primary for now */
-             @apply bg-green-600 hover:bg-green-700 text-white border-green-700 hover:border-green-800 focus:ring-green-500;
+        .btn-danger {
+            @apply bg-red-600 hover:bg-red-700 text-white border-red-700 hover:border-red-800 focus:ring-red-500;
         }
         .btn-disabled {
-            @apply bg-gray-100 text-gray-400 cursor-not-allowed border-gray-300;
+            @apply bg-gray-300 text-gray-500 cursor-not-allowed shadow-none hover:shadow-none border-gray-400;
         }
-
         .input-field {
-            /* Base input style with explicit border */
-            @apply border-2 border-gray-300 rounded-md p-2.5 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow duration-150 shadow-sm;
+            @apply border-2 border-gray-400 rounded-lg p-3 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow duration-150 shadow-sm;
         }
         .section-container {
             @apply mb-6 p-6 bg-white rounded-xl shadow-lg border border-gray-200;
@@ -50,7 +41,6 @@
         .section-title {
             @apply text-xl font-bold text-gray-800 mb-4;
         }
-        /* Connection Request Modal Styles */
         .modal-overlay {
             @apply fixed inset-0 bg-black bg-opacity-60 transition-opacity;
         }
@@ -60,32 +50,19 @@
         .modal-panel {
             @apply relative transform overflow-hidden rounded-xl bg-white text-left shadow-2xl transition-all sm:my-8 sm:w-full sm:max-w-md;
         }
-        /* Custom style for file input button appearance */
         .file-input-styled::-webkit-file-upload-button {
-             visibility: hidden;
-             width: 0;
-             height: 0;
-             padding: 0;
-             margin:0;
+             visibility: hidden; width: 0; height: 0; padding: 0; margin:0;
         }
         .file-input-styled::before {
-            content: 'ファイルを選択'; /* Custom button text */
-            @apply inline-block bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold py-2 px-4 rounded-md cursor-pointer transition-colors duration-150 border border-gray-400 hover:border-gray-500;
-            /* Match secondary button style */
+            content: 'ファイルを選択';
+            @apply inline-block bg-blue-100 hover:bg-blue-200 text-blue-700 font-semibold py-2.5 px-4 rounded-lg cursor-pointer transition-colors duration-150 mr-3 border-2 border-blue-400 hover:border-blue-500;
         }
         .file-input-styled:hover::before {
-             @apply shadow-sm;
+             @apply shadow-md;
         }
         input[type="file"].file-input-styled {
-            @apply border-2 border-gray-300 rounded-md p-0 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow duration-150 shadow-sm flex items-center text-sm text-gray-700;
-            /* The text part of the input (file name) styling */
+            @apply border-2 border-gray-400 rounded-lg p-0 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow duration-150 shadow-sm flex items-center text-sm text-gray-700 pl-2;
         }
-        /* Ensure file name text is visible next to the custom button */
-        input[type="file"].file-input-styled {
-            padding-left: 0.5rem; /* Add some padding for the file name text */
-        }
-
-
     </style>
 </head>
 <body class="bg-slate-100 text-gray-800 min-h-screen flex flex-col items-center justify-center p-4 sm:p-6">
@@ -98,13 +75,19 @@
 
         <section id="my-peer-info-section" class="section-container bg-indigo-50 border-indigo-300">
             <h2 class="section-title text-indigo-800">あなたの情報</h2>
-            <div class="p-4 bg-white rounded-lg shadow border-2 border-indigo-200">
-                <p class="text-sm text-indigo-700 mb-1">あなたのPeer ID:</p>
-                <p id="myPeerId" class="text-indigo-700 font-mono break-all text-xl font-semibold">初期化中...</p>
+            <div class="space-y-3 mb-4">
+                <label for="customPeerIdInput" class="block text-sm font-medium text-indigo-700">希望するPeer ID (6文字以上、空の場合は自動生成):</label>
+                <input type="text" id="customPeerIdInput" placeholder="例: my-cool-id-123" class="input-field w-full">
+                <button id="startPeerBtn" class="btn btn-primary w-full">このIDで開始 / ID自動生成</button>
             </div>
+            <div id="peerIdDisplayContainer" class="p-4 bg-white rounded-lg shadow border-2 border-indigo-200 hidden">
+                <p class="text-sm text-indigo-700 mb-1">現在のあなたのPeer ID:</p>
+                <p id="myPeerId" class="text-indigo-700 font-mono break-all text-xl font-semibold">未初期化</p>
+            </div>
+            <div id="idValidationError" class="text-red-600 text-sm mt-2"></div>
         </section>
 
-        <section id="connection-management-section" class="section-container">
+        <section id="connection-management-section" class="section-container opacity-50 pointer-events-none">
             <h2 class="section-title">相手に接続リクエスト</h2>
             <div class="space-y-3">
                 <input type="text" id="peerIdInput" placeholder="相手のPeer IDを入力してください" class="input-field w-full">
@@ -112,7 +95,7 @@
             </div>
         </section>
 
-        <section id="file-transfer-section" class="section-container hidden">
+        <section id="file-transfer-section" class="section-container hidden opacity-50 pointer-events-none">
             <h2 class="section-title">ファイル送信</h2>
             <div class="space-y-3">
                  <label for="fileInput" class="block text-sm font-medium text-gray-700 mb-1">送信するファイルを選択:</label>
@@ -124,18 +107,18 @@
         <section id="status-and-received-files-section" class="section-container">
             <h2 class="section-title">ステータス & 受信ファイル</h2>
             <div id="statusMessages" class="p-3 bg-gray-100 rounded-lg border-2 border-gray-300 text-sm text-gray-700 mb-4 custom-scrollbar">
-                ステータス: 初期化中...
+                ステータス: PeerJSを初期化してください。
             </div>
             <h3 class="text-lg font-semibold text-gray-700 mb-3">受信したファイル:</h3>
             <div id="receivedFilesContainer" class="space-y-3">
                 <p id="noFilesMessage" class="text-sm text-gray-500 italic">まだファイルを受信していません。</p>
-                </div>
+            </div>
         </section>
     </div>
 
     <div id="connectionRequestModal" class="modal-container hidden" aria-labelledby="modal-title-request" role="dialog" aria-modal="true">
         <div class="modal-overlay" aria-hidden="true"></div>
-        <div class="modal-panel p-6 border-2 border-gray-300"> {/* Modal border consistent with other elements */}
+        <div class="modal-panel p-6 border-4 border-blue-500">
             <div class="sm:flex sm:items-start">
                 <div class="mx-auto flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-blue-100 sm:mx-0 sm:h-10 sm:w-10">
                     <svg class="h-6 w-6 text-blue-600" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true">
@@ -164,6 +147,11 @@
 
     <script>
         const myPeerIdElement = document.getElementById('myPeerId');
+        const customPeerIdInputElement = document.getElementById('customPeerIdInput');
+        const startPeerBtn = document.getElementById('startPeerBtn');
+        const peerIdDisplayContainer = document.getElementById('peerIdDisplayContainer');
+        const idValidationErrorElement = document.getElementById('idValidationError');
+
         const peerIdInputElement = document.getElementById('peerIdInput');
         const connectBtn = document.getElementById('connectBtn');
         const fileInputElement = document.getElementById('fileInput');
@@ -171,6 +159,8 @@
         const statusMessagesElement = document.getElementById('statusMessages');
         const receivedFilesContainer = document.getElementById('receivedFilesContainer');
         const noFilesMessage = document.getElementById('noFilesMessage');
+        
+        const connectionManagementSection = document.getElementById('connection-management-section');
         const fileTransferSection = document.getElementById('file-transfer-section');
 
         // Modal elements
@@ -181,46 +171,88 @@
         const rejectConnBtn = document.getElementById('rejectConnBtn');
 
         let peer = null;
-        let conn = null; // 現在アクティブな接続
-        let pendingConnection = null; // 承諾待ちの接続要求
+        let conn = null; 
+        let pendingConnection = null; 
         let receivedFileData = [];
         let fileInfoForReceiver = null;
-        const CHUNK_SIZE = 64 * 1024; // 64KB チャンクサイズ
+        const CHUNK_SIZE = 64 * 1024;
 
         function updateStatus(message, isError = false) {
             console.log((isError ? "ERROR: " : "INFO: ") + message);
             const statusLine = document.createElement('p');
-            statusLine.innerHTML = message; // Allow simple HTML like <strong> for emphasis
+            statusLine.innerHTML = message; 
             if (isError) {
                 statusLine.classList.add('text-red-600', 'font-semibold');
             } else {
                 statusLine.classList.add('text-gray-700');
             }
-            // 新しいメッセージを先頭に追加
-            if (statusMessagesElement.firstChild && statusMessagesElement.firstChild.textContent === "ステータス: 初期化中...") {
-                 statusMessagesElement.innerHTML = ''; // 初期メッセージをクリア
+            if (statusMessagesElement.firstChild && statusMessagesElement.firstChild.textContent.includes("PeerJSを初期化してください")) {
+                 statusMessagesElement.innerHTML = ''; 
             }
             statusMessagesElement.insertBefore(statusLine, statusMessagesElement.firstChild);
-            // メッセージが多すぎたら古いものから削除 (例: 最大15件)
             while (statusMessagesElement.childElementCount > 15) {
                 statusMessagesElement.removeChild(statusMessagesElement.lastChild);
             }
         }
 
-        // PeerJSの初期化
-        try {
-            peer = new Peer(null, {
-                 debug: 3, // デバッグレベルを3に上げる (0:なし, 1:エラー, 2:ワーニング, 3:全て)
-            });
-        } catch (error) {
-            updateStatus(`<strong>PeerJSの初期化に失敗:</strong> ${error.message}. インターネット接続を確認してください。`, true);
-            console.error("PeerJS Initialization Error:", error);
+        function validatePeerId(id) {
+            idValidationErrorElement.textContent = ''; // Clear previous errors
+            if (!id) return true; // Empty ID is allowed (auto-generate)
+
+            if (id.length < 6) {
+                idValidationErrorElement.textContent = 'Peer IDは6文字以上で入力してください。';
+                return false;
+            }
+            if (/^(.)\1+$/.test(id)) {
+                idValidationErrorElement.textContent = 'Peer IDの全ての文字を同じにすることはできません。';
+                return false;
+            }
+            // Check for invalid characters (allow alphanumeric and hyphen)
+            if (!/^[a-zA-Z0-9-]+$/.test(id)) {
+                idValidationErrorElement.textContent = 'Peer IDは英数字とハイフンのみ使用できます。';
+                return false;
+            }
+            return true;
         }
 
-        if (peer) {
+        startPeerBtn.addEventListener('click', () => {
+            if (peer) { // Already initialized
+                updateStatus('PeerJSは既に初期化済みです。', true);
+                return;
+            }
+
+            let customId = customPeerIdInputElement.value.trim();
+            if (!validatePeerId(customId)) {
+                return;
+            }
+            
+            if (customId === "") {
+                customId = null; // Let PeerServer generate ID
+            }
+
+            try {
+                updateStatus(`PeerJSを初期化中... ${customId ? `ID: ${customId}` : 'ID自動生成'}`);
+                peer = new Peer(customId, { debug: 3 });
+                initializePeerEvents();
+                startPeerBtn.disabled = true;
+                startPeerBtn.classList.add('btn-disabled');
+                customPeerIdInputElement.disabled = true;
+            } catch (error) {
+                updateStatus(`<strong>PeerJSの初期化に失敗:</strong> ${error.message}.`, true);
+                console.error("PeerJS Initialization Error:", error);
+            }
+        });
+
+        function initializePeerEvents() {
+            if (!peer) return;
+
             peer.on('open', (id) => {
                 myPeerIdElement.textContent = id;
+                peerIdDisplayContainer.classList.remove('hidden');
                 updateStatus(`PeerJS準備完了。あなたのID: <strong>${id}</strong>`);
+                
+                // Enable connection section
+                connectionManagementSection.classList.remove('opacity-50', 'pointer-events-none');
                 connectBtn.disabled = false;
                 connectBtn.classList.remove('btn-disabled');
             });
@@ -245,14 +277,23 @@
             peer.on('error', (err) => {
                 updateStatus(`<strong>PeerJSエラー (${err.type}):</strong> ${err.message}`, true);
                 console.error("PeerJS Error:", err);
-                if (err.type === 'peer-unavailable') {
+                if (err.type === 'unavailable-id' && customPeerIdInputElement.value.trim() !== '') {
+                     idValidationErrorElement.textContent = `ID "${customPeerIdInputElement.value.trim()}" は既に使用されています。別のIDを試してください。`;
+                     peer = null; // Reset peer object
+                     startPeerBtn.disabled = false;
+                     startPeerBtn.classList.remove('btn-disabled');
+                     customPeerIdInputElement.disabled = false;
+                } else if (err.type === 'peer-unavailable') {
                     updateStatus(`接続先のピア (<strong>${peerIdInputElement.value || '指定されたID'}</strong>) が見つかりません。IDを確認してください。`, true);
                 } else if (err.type === 'network' || err.type === 'server-error' || err.type === 'socket-error') {
                      updateStatus('<strong>ネットワークまたはサーバーエラー:</strong> PeerJS Cloudに接続できません。インターネット接続を確認し、しばらくしてから再試行してください。', true);
                 }
-                connectBtn.disabled = false;
-                connectBtn.classList.remove('btn-disabled');
-                connectBtn.textContent = 'リクエスト送信';
+                // Ensure connect button is usable if an error occurs before connection
+                if (!conn || !conn.open) {
+                    connectBtn.disabled = false;
+                    connectBtn.classList.remove('btn-disabled');
+                    connectBtn.textContent = 'リクエスト送信';
+                }
             });
 
             peer.on('disconnected', () => {
@@ -262,10 +303,8 @@
             peer.on('close', () => {
                 updateStatus('<strong>Peer接続が完全に閉じられました。</strong>', true);
             });
-        } else {
-             updateStatus('<strong>PeerJSオブジェクトの初期化に失敗しました。</strong> ページをリロードするか、コンソールを確認してください。', true);
         }
-
+        
         acceptConnBtn.addEventListener('click', () => {
             if (pendingConnection) {
                 conn = pendingConnection;
@@ -291,7 +330,7 @@
         function setupConnectionEvents(connectionInstance) {
             connectionInstance.on('open', () => {
                 updateStatus(`ピア <strong>${connectionInstance.peer}</strong> とのデータチャネルが開きました。ファイル送信が可能です。`);
-                fileTransferSection.classList.remove('hidden');
+                fileTransferSection.classList.remove('hidden', 'opacity-50', 'pointer-events-none');
                 sendBtn.disabled = false;
                 sendBtn.classList.remove('btn-disabled');
                 connectBtn.textContent = '接続済み';
@@ -308,7 +347,7 @@
             connectionInstance.on('close', () => {
                 updateStatus(`ピア <strong>${connectionInstance.peer}</strong> との接続が閉じられました。`);
                 conn = null;
-                fileTransferSection.classList.add('hidden');
+                fileTransferSection.classList.add('hidden', 'opacity-50', 'pointer-events-none');
                 sendBtn.disabled = true;
                 sendBtn.classList.add('btn-disabled');
                 connectBtn.disabled = false;
@@ -377,30 +416,26 @@
                     updateStatus('<strong>エラー:</strong> 受信したJSONデータの解析に失敗しました。', true);
                     console.error("JSON parse error:", e, "Data:", data);
                 }
-            } else if (data instanceof ArrayBuffer || data instanceof Uint8Array) { // Uint8Arrayのチェックを追加
+            } else if (data instanceof ArrayBuffer || data instanceof Uint8Array) { 
                 if (!fileInfoForReceiver) {
                     updateStatus('<strong>警告:</strong> ファイル情報がない状態でチャンクデータを受信しました。このチャンクは無視されます。', true);
                     console.warn('Chunk received before file-info. Ignoring chunk from peer:', fromPeer, 'Chunk size:', data.byteLength, 'Current fileInfo:', fileInfoForReceiver);
                     return;
                 }
-                // ArrayBufferでもUint8Arrayでも、そのままBlobの材料として使える
                 receivedFileData.push(data);
                 const receivedSize = receivedFileData.reduce((sum, chunk) => sum + chunk.byteLength, 0);
                 const progress = fileInfoForReceiver.size > 0 ? ((receivedSize / fileInfoForReceiver.size) * 100).toFixed(1) : 0;
                 updateStatus(`ファイルチャンク受信 (<strong>${fromPeer}</strong>): <strong>${fileInfoForReceiver.name}</strong> (${progress}%) - ${receivedSize.toLocaleString()}/${fileInfoForReceiver.size.toLocaleString()} bytes`);
             } else {
-                // 不明なデータ型の場合のログとステータスメッセージを強化
                 let dataTypeDetail = typeof data;
                 if (data && data.constructor && data.constructor.name) {
                     dataTypeDetail += ` (constructor: ${data.constructor.name})`;
-                } else if (data) { // constructor.name がない場合でも、Object.prototype.toString で詳細を取得
+                } else if (data) { 
                     dataTypeDetail += ` (specific type: ${Object.prototype.toString.call(data)})`;
                 } else if (data === null) {
                     dataTypeDetail = 'null';
                 }
-
                 updateStatus(`<strong>警告:</strong> 不明なデータ型を受信しました (<strong>${fromPeer}</strong>): ${dataTypeDetail}。詳細はコンソールを確認してください。`, true);
-                
                 console.warn("--- Unknown Data Received Details ---");
                 console.warn("Peer ID:", fromPeer);
                 console.warn("typeof data:", typeof data);
@@ -410,8 +445,7 @@
                         console.warn("data.constructor.name:", data.constructor.name);
                     }
                     console.warn("Object.prototype.toString.call(data):", Object.prototype.toString.call(data));
-                    // もしオブジェクトならキーを列挙してみる
-                    if (typeof data === 'object' && data !== null) { // nullチェックを追加
+                    if (typeof data === 'object' && data !== null) { 
                         try {
                             console.warn("Keys of the object:", Object.keys(data));
                         } catch (e) {
@@ -419,8 +453,7 @@
                         }
                     }
                 }
-                console.warn("Actual data object received:", data); // オブジェクトそのものをログに出力
-
+                console.warn("Actual data object received:", data); 
                 if (data instanceof Blob) {
                     console.warn("The unknown data is an instance of Blob. Size:", data.size, "Type:", data.type);
                 }
@@ -429,6 +462,10 @@
         }
 
         connectBtn.addEventListener('click', () => {
+            if (!peer || !peer.id) {
+                updateStatus('<strong>エラー:</strong> PeerJSが初期化されていません。「このIDで開始」ボタンを押してください。', true);
+                return;
+            }
             const targetPeerId = peerIdInputElement.value.trim();
             if (!targetPeerId) {
                 updateStatus('<strong>エラー:</strong> 接続先のPeer IDを入力してください。', true);
@@ -443,7 +480,7 @@
                 try {
                     const newConnAttempt = peer.connect(targetPeerId, {
                         reliable: true,
-                        serialization: 'binary' // データ型に応じて'json', 'binary-utf8', 'none'も選択可
+                        serialization: 'binary' 
                     });
                     conn = newConnAttempt;
                     setupConnectionEvents(conn);
@@ -462,8 +499,6 @@
                 updateStatus(`既に <strong>${conn.peer}</strong> と接続済みです。`);
             } else if (pendingConnection) {
                 updateStatus(`ピア <strong>${pendingConnection.peer}</strong> からの接続リクエストを処理中です。`);
-            } else {
-                updateStatus('<strong>エラー:</strong> PeerJSが初期化されていません。ページをリロードしてください。', true);
             }
         });
 
@@ -588,10 +623,12 @@
             }
         }
 
+        // Initial UI state
         connectBtn.disabled = true;
         connectBtn.classList.add('btn-disabled');
         sendBtn.disabled = true;
         sendBtn.classList.add('btn-disabled');
+
 
         window.addEventListener('beforeunload', () => {
             if (pendingConnection) {
