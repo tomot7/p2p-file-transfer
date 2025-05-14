@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>P2P File Transfer (PeerJS Cloud with Enhanced Confirmation)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        #statusMessages {
+            min-height: 2em;
+            max-height: 10em;
+            overflow-y: auto;
+        }
+        .btn {
+            @apply py-2 px-4 rounded-md font-semibold shadow-md transition-colors duration-150;
+        }
+        .btn-primary {
+            @apply bg-blue-500 hover:bg-blue-600 text-white;
+        }
+        .btn-secondary {
+            @apply bg-gray-300 hover:bg-gray-400 text-gray-800;
+        }
+        .btn-disabled {
+            @apply bg-gray-200 text-gray-400 cursor-not-allowed;
+        }
+        .input-field {
+            @apply border border-gray-300 rounded-md p-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none;
+        }
+        /* 接続要求モーダルのためのスタイル */
+        .modal-overlay {
+            @apply fixed inset-0 bg-gray-600 bg-opacity-75 transition-opacity;
+        }
+        .modal-container {
+            @apply fixed inset-0 z-10 w-screen overflow-y-auto flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0;
+        }
+        .modal-panel {
+            @apply relative transform overflow-hidden rounded-lg bg-white text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-lg;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 text-gray-800 min-h-screen flex flex-col items-center justify-center p-4">
+
+    <div class="container mx-auto bg-white p-6 sm:p-8 rounded-xl shadow-2xl w-full max-w-lg">
+        <header class="mb-6 text-center">
+            <h1 class="text-3xl font-bold text-blue-600">P2P ファイル転送</h1>
+            <p class="text-sm text-gray-500">PeerJS Cloud & WebRTC (リクエスト情報強化版)</p>
+        </header>
+
+        <section id="my-peer-info" class="mb-6 p-4 bg-indigo-50 rounded-lg border border-indigo-200">
+            <h2 class="text-lg font-semibold text-indigo-700 mb-1">あなたのPeer ID:</h2>
+            <p id="myPeerId" class="text-indigo-600 font-mono break-all">初期化中...</p>
+        </section>
+
+        <section id="connection-management" class="mb-6">
+            <h2 class="text-xl font-semibold text-gray-700 mb-3">相手に接続リクエスト</h2>
+            <div class="flex flex-col sm:flex-row gap-2">
+                <input type="text" id="peerIdInput" placeholder="相手のPeer IDを入力" class="input-field flex-grow">
+                <button id="connectBtn" class="btn btn-primary w-full sm:w-auto">リクエスト送信</button>
+            </div>
+        </section>
+
+        <section id="file-transfer-section" class="mb-6 hidden">
+            <h2 class="text-xl font-semibold text-gray-700 mb-3">ファイル送信</h2>
+            <div class="flex flex-col gap-3">
+                <input type="file" id="fileInput" class="input-field file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100">
+                <button id="sendBtn" class="btn btn-primary w-full">ファイルを送信</button>
+            </div>
+        </section>
+
+        <section id="status-and-received-files">
+            <h2 class="text-xl font-semibold text-gray-700 mb-3">ステータス & 受信ファイル</h2>
+            <div id="statusMessages" class="p-3 bg-gray-50 rounded-md border border-gray-200 text-sm text-gray-600 mb-4 h-20 overflow-y-auto">
+                ステータス: 初期化中...
+            </div>
+            <div id="receivedFilesContainer" class="space-y-2">
+                </div>
+        </section>
+    </div>
+
+    <div id="connectionRequestModal" class="modal-container hidden" aria-labelledby="modal-title-request" role="dialog" aria-modal="true">
+        <div class="modal-overlay" aria-hidden="true"></div>
+        <div class="modal-panel">
+            <div class="bg-white px-4 pb-4 pt-5 sm:p-6 sm:pb-4">
+                <div class="sm:flex sm:items-start">
+                    <div class="mx-auto flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-blue-100 sm:mx-0 sm:h-10 sm:w-10">
+                        <svg class="h-6 w-6 text-blue-600" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
+                        </svg>
+                    </div>
+                    <div class="mt-3 text-center sm:ml-4 sm:mt-0 sm:text-left">
+                        <h3 class="text-base font-semibold leading-6 text-gray-900" id="modal-title-request">接続リクエスト</h3>
+                        <div class="mt-2">
+                            <p class="text-sm text-gray-500">
+                                Peer ID: <strong id="incomingPeerId" class="font-mono"></strong> さんから接続リクエストがあります。
+                            </p>
+                            <p class="text-xs text-gray-400 mt-1">
+                                リクエスト受信時刻: <span id="requestTime"></span>
+                            </p>
+                            <p class="text-sm text-gray-500 mt-3">許可しますか？</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="bg-gray-50 px-4 py-3 sm:flex sm:flex-row-reverse sm:px-6">
+                <button type="button" id="acceptConnBtn" class="inline-flex w-full justify-center rounded-md bg-green-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-green-500 sm:ml-3 sm:w-auto btn">承諾</button>
+                <button type="button" id="rejectConnBtn" class="mt-3 inline-flex w-full justify-center rounded-md bg-red-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-red-500 sm:mt-0 sm:w-auto btn">拒否</button>
+            </div>
+        </div>
+    </div>
+
+
+    <script>
+        const myPeerIdElement = document.getElementById('myPeerId');
+        const peerIdInputElement = document.getElementById('peerIdInput');
+        const connectBtn = document.getElementById('connectBtn');
+        const fileInputElement = document.getElementById('fileInput');
+        const sendBtn = document.getElementById('sendBtn');
+        const statusMessagesElement = document.getElementById('statusMessages');
+        const receivedFilesContainer = document.getElementById('receivedFilesContainer');
+        const fileTransferSection = document.getElementById('file-transfer-section');
+
+        // Modal elements
+        const connectionRequestModal = document.getElementById('connectionRequestModal');
+        const incomingPeerIdElement = document.getElementById('incomingPeerId');
+        const requestTimeElement = document.getElementById('requestTime'); // 追加
+        const acceptConnBtn = document.getElementById('acceptConnBtn');
+        const rejectConnBtn = document.getElementById('rejectConnBtn');
+
+        let peer = null;
+        let conn = null; // 現在アクティブな接続
+        let pendingConnection = null; // 承諾待ちの接続要求
+        let receivedFileData = [];
+        let fileInfoForReceiver = null;
+        const CHUNK_SIZE = 64 * 1024;
+
+        function updateStatus(message, isError = false) {
+            console.log(message);
+            const statusLine = document.createElement('p');
+            statusLine.textContent = message;
+            if (isError) {
+                statusLine.classList.add('text-red-500');
+            }
+            statusMessagesElement.insertBefore(statusLine, statusMessagesElement.firstChild);
+            while (statusMessagesElement.childElementCount > 10) {
+                statusMessagesElement.removeChild(statusMessagesElement.lastChild);
+            }
+        }
+
+        try {
+            peer = new Peer(null, { debug: 2 });
+        } catch (error) {
+            updateStatus(`PeerJSの初期化に失敗しました: ${error.message}. インターネット接続を確認してください。`, true);
+            console.error("PeerJS Initialization Error:", error);
+        }
+
+        if (peer) {
+            peer.on('open', (id) => {
+                myPeerIdElement.textContent = id;
+                updateStatus(`PeerJS準備完了。あなたのID: ${id}`);
+                connectBtn.disabled = false;
+                connectBtn.classList.remove('btn-disabled');
+            });
+
+            peer.on('connection', (newConnection) => {
+                if ((conn && conn.open) || pendingConnection) {
+                    const busyPeer = (conn && conn.open) ? conn.peer : (pendingConnection ? pendingConnection.peer : '別のピア');
+                    updateStatus(`現在 ${busyPeer} との接続処理中です。新しい接続リクエスト (${newConnection.peer}) は拒否されました。`);
+                    newConnection.send(JSON.stringify({ type: 'system-message', message: '相手は取り込み中です。' }));
+                    newConnection.close();
+                    return;
+                }
+
+                pendingConnection = newConnection;
+                const requestReceivedTime = new Date(); // リクエスト受信時刻を取得
+                incomingPeerIdElement.textContent = pendingConnection.peer;
+                requestTimeElement.textContent = requestReceivedTime.toLocaleString('ja-JP', { dateStyle: 'short', timeStyle: 'medium' }); // 時刻をフォーマットして表示
+                connectionRequestModal.classList.remove('hidden');
+                updateStatus(`ピア ${pendingConnection.peer} から接続リクエストを受信しました。応答待ち...`);
+            });
+
+            peer.on('error', (err) => {
+                updateStatus(`PeerJSエラー: ${err.type} - ${err.message}`, true);
+                console.error("PeerJS Error:", err);
+                if (err.type === 'peer-unavailable') {
+                    updateStatus(`接続先のピア (${peerIdInputElement.value}) が見つかりませんでした。`, true);
+                } else if (err.type === 'network') {
+                     updateStatus('ネットワークエラー。PeerJS Cloudに接続できません。インターネット接続を確認してください。', true);
+                }
+                connectBtn.disabled = false;
+                connectBtn.classList.remove('btn-disabled');
+                connectBtn.textContent = 'リクエスト送信';
+            });
+
+            peer.on('disconnected', () => {
+                updateStatus('PeerServer Cloudから切断されました。', true);
+            });
+
+            peer.on('close', () => {
+                updateStatus('Peer接続が完全に閉じられました。', true);
+            });
+        } else {
+             updateStatus('PeerJSオブジェクトの初期化に失敗しました。ページをリロードするか、コンソールを確認してください。', true);
+        }
+
+        acceptConnBtn.addEventListener('click', () => {
+            if (pendingConnection) {
+                conn = pendingConnection;
+                pendingConnection = null;
+                connectionRequestModal.classList.add('hidden');
+
+                updateStatus(`ピア ${conn.peer} との接続を承諾しました。`);
+                setupConnectionEvents(conn);
+                conn.send(JSON.stringify({ type: 'system-message', message: '接続リクエストが承諾されました。' }));
+            }
+        });
+
+        rejectConnBtn.addEventListener('click', () => {
+            if (pendingConnection) {
+                updateStatus(`ピア ${pendingConnection.peer} との接続リクエストを拒否しました。`);
+                pendingConnection.send(JSON.stringify({ type: 'system-message', message: '接続リクエストが拒否されました。' }));
+                pendingConnection.close();
+                pendingConnection = null;
+                connectionRequestModal.classList.add('hidden');
+            }
+        });
+
+
+        function setupConnectionEvents(connectionInstance) {
+            connectionInstance.on('open', () => {
+                updateStatus(`ピア ${connectionInstance.peer} とのデータチャネルが開きました。`);
+                fileTransferSection.classList.remove('hidden');
+                sendBtn.disabled = false;
+                sendBtn.classList.remove('btn-disabled');
+                connectBtn.textContent = '接続済み';
+                connectBtn.disabled = true;
+                connectBtn.classList.add('btn-disabled');
+                peerIdInputElement.value = connectionInstance.peer;
+                peerIdInputElement.disabled = true;
+            });
+
+            connectionInstance.on('data', (data) => {
+                handleReceivedData(data, connectionInstance.peer);
+            });
+
+            connectionInstance.on('close', () => {
+                updateStatus(`ピア ${connectionInstance.peer} との接続が閉じられました。`);
+                conn = null;
+                fileTransferSection.classList.add('hidden');
+                connectBtn.disabled = false;
+                connectBtn.classList.remove('btn-disabled');
+                connectBtn.textContent = 'リクエスト送信'; // 文言変更
+                peerIdInputElement.disabled = false;
+                peerIdInputElement.value = '';
+                receivedFileData = [];
+                fileInfoForReceiver = null;
+            });
+
+            connectionInstance.on('error', (err) => {
+                updateStatus(`接続エラー (${connectionInstance.peer}): ${err.type} - ${err.message}`, true);
+                console.error("Connection Error:", err);
+            });
+        }
+
+        function handleReceivedData(data, fromPeer) {
+            if (typeof data === 'string') {
+                try {
+                    const parsedData = JSON.parse(data);
+                    if (parsedData.type === 'file-info') {
+                        fileInfoForReceiver = parsedData;
+                        receivedFileData = [];
+                        updateStatus(`ファイル情報受信 (${fromPeer}): ${fileInfoForReceiver.name} (${(fileInfoForReceiver.size / 1024).toFixed(2)} KB)`);
+                    } else if (parsedData.type === 'file-transfer-complete') {
+                        updateStatus(`ファイル ${fileInfoForReceiver.name} の受信完了 (${fromPeer})。`);
+                        if (fileInfoForReceiver && receivedFileData.length > 0) {
+                            const receivedBlob = new Blob(receivedFileData, { type: fileInfoForReceiver.fileType });
+                            createDownloadLink(receivedBlob, fileInfoForReceiver.name);
+                            receivedFileData = [];
+                            fileInfoForReceiver = null;
+                        } else {
+                            updateStatus('受信データまたはファイル情報が不足しています。', true);
+                        }
+                    } else if (parsedData.type === 'system-message') {
+                        updateStatus(`システムメッセージ (${fromPeer}): ${parsedData.message}`);
+                    } else if (parsedData.type === 'text-message') {
+                        updateStatus(`メッセージ受信 (${fromPeer}): ${parsedData.message}`);
+                    }
+                } catch (e) {
+                    updateStatus('受信したJSONデータの解析に失敗しました。', true);
+                    console.error("JSON parse error:", e, "Data:", data);
+                }
+            } else if (data instanceof ArrayBuffer) {
+                if (!fileInfoForReceiver) {
+                    updateStatus('ファイル情報がない状態でチャンクデータを受信しました。無視します。', true);
+                    return;
+                }
+                receivedFileData.push(data);
+                const receivedSize = receivedFileData.reduce((sum, chunk) => sum + chunk.byteLength, 0);
+                const progress = ((receivedSize / fileInfoForReceiver.size) * 100).toFixed(2);
+                updateStatus(`ファイルチャンク受信 (${fromPeer}): ${fileInfoForReceiver.name} (${progress}%)`);
+            } else {
+                updateStatus(`不明なデータ型を受信しました (${fromPeer}): ${typeof data}`, true);
+                console.log("Unknown data received:", data);
+            }
+        }
+
+        connectBtn.addEventListener('click', () => {
+            const targetPeerId = peerIdInputElement.value.trim();
+            if (!targetPeerId) {
+                updateStatus('接続先のPeer IDを入力してください。', true);
+                return;
+            }
+            if (peer && !conn && !pendingConnection) {
+                updateStatus(`${targetPeerId} に接続リクエストを送信中...`); // 文言変更
+                connectBtn.disabled = true;
+                connectBtn.classList.add('btn-disabled');
+                connectBtn.textContent = '送信中...'; // 文言変更
+
+                try {
+                    conn = peer.connect(targetPeerId, { reliable: true });
+                    setupConnectionEvents(conn);
+                } catch (error) {
+                    updateStatus(`接続リクエスト送信中にエラーが発生しました: ${error.message}`, true); // 文言変更
+                    console.error("Connection attempt error:", error);
+                    connectBtn.disabled = false;
+                    connectBtn.classList.remove('btn-disabled');
+                    connectBtn.textContent = 'リクエスト送信'; // 文言変更
+                    if (conn) {
+                        conn.close();
+                        conn = null;
+                    }
+                }
+            } else if (conn && conn.open) {
+                updateStatus(`既に ${conn.peer} と接続済みです。`);
+            } else if (pendingConnection) {
+                updateStatus(`ピア ${pendingConnection.peer} からの接続リクエストを処理中です。`);
+            } else {
+                updateStatus('PeerJSが初期化されていません。ページをリロードしてください。', true);
+            }
+        });
+
+        sendBtn.addEventListener('click', () => {
+            if (!conn || !conn.open) {
+                updateStatus('接続されていません。まず相手に接続リクエストを送信し、承諾を得てください。', true); // 文言変更
+                return;
+            }
+            const file = fileInputElement.files[0];
+            if (!file) {
+                updateStatus('送信するファイルを選択してください。', true);
+                return;
+            }
+
+            updateStatus(`ファイル ${file.name} の送信準備中...`);
+            sendBtn.disabled = true;
+            sendBtn.classList.add('btn-disabled');
+
+            const fileInfo = {
+                type: 'file-info',
+                name: file.name,
+                size: file.size,
+                fileType: file.type
+            };
+            conn.send(JSON.stringify(fileInfo));
+            updateStatus(`ファイル情報送信: ${file.name}`);
+
+            const reader = new FileReader();
+            let offset = 0;
+
+            reader.onload = (event) => {
+                if (!conn || !conn.open) {
+                    updateStatus('送信中に接続が切れました。', true);
+                    sendBtn.disabled = false;
+                    sendBtn.classList.remove('btn-disabled');
+                    return;
+                }
+                try {
+                    conn.send(event.target.result);
+                    offset += event.target.result.byteLength;
+                    const progress = ((offset / file.size) * 100).toFixed(2);
+                    updateStatus(`チャンク送信中: ${file.name} (${progress}%)`);
+
+                    if (offset < file.size) {
+                        readNextChunk();
+                    } else {
+                        updateStatus(`ファイル ${file.name} の全チャンク送信完了。`);
+                        conn.send(JSON.stringify({ type: 'file-transfer-complete' }));
+                        sendBtn.disabled = false;
+                        sendBtn.classList.remove('btn-disabled');
+                        fileInputElement.value = '';
+                    }
+                } catch (error) {
+                    updateStatus(`チャンク送信エラー: ${error.message}`, true);
+                    console.error("Chunk send error:", error);
+                    sendBtn.disabled = false;
+                    sendBtn.classList.remove('btn-disabled');
+                }
+            };
+
+            reader.onerror = (error) => {
+                updateStatus(`ファイル読み込みエラー: ${error.message}`, true);
+                console.error("FileReader error:", error);
+                sendBtn.disabled = false;
+                sendBtn.classList.remove('btn-disabled');
+            };
+
+            function readNextChunk() {
+                if (!conn || !conn.open) {
+                     updateStatus('次のチャンク読み込み前に接続が切れました。', true);
+                     sendBtn.disabled = false;
+                     sendBtn.classList.remove('btn-disabled');
+                     return;
+                }
+                const slice = file.slice(offset, offset + CHUNK_SIZE);
+                reader.readAsArrayBuffer(slice);
+            }
+            readNextChunk();
+        });
+
+        function createDownloadLink(blob, fileName) {
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = fileName;
+            a.textContent = `ダウンロード: ${fileName} (${(blob.size / 1024).toFixed(2)} KB)`;
+            a.className = 'block bg-green-100 hover:bg-green-200 text-green-700 font-semibold py-2 px-3 rounded-md border border-green-300 transition-colors duration-150';
+            
+            const existingLink = Array.from(receivedFilesContainer.children).find(child => child.download === fileName);
+            if (existingLink) {
+                URL.revokeObjectURL(existingLink.href);
+                existingLink.href = url;
+                existingLink.textContent = `再ダウンロード: ${fileName} (${(blob.size / 1024).toFixed(2)} KB)`;
+            } else {
+                 receivedFilesContainer.appendChild(a);
+            }
+        }
+
+        // Initial button states
+        connectBtn.disabled = true;
+        connectBtn.classList.add('btn-disabled');
+        sendBtn.disabled = true;
+        sendBtn.classList.add('btn-disabled');
+
+        window.addEventListener('beforeunload', () => {
+            if (pendingConnection) {
+                pendingConnection.close();
+            }
+            if (conn) {
+                conn.close();
+            }
+            if (peer) {
+                peer.destroy();
+            }
+        });
+    </script>
+</body>
+</html>
