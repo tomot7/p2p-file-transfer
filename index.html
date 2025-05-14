@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>P2P File Transfer (PeerJS Cloud - Button Border Emphasized)</title>
+    <title>P2P File Transfer (PeerJS Cloud - Debug Enhanced v2)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <style>
@@ -197,7 +197,7 @@
         // PeerJSの初期化
         try {
             peer = new Peer(null, {
-                 debug: 2, // 0:なし, 1:エラー, 2:ワーニング, 3:全て
+                 debug: 3, // デバッグレベルを3に上げる (0:なし, 1:エラー, 2:ワーニング, 3:全て)
             });
         } catch (error) {
             updateStatus(`<strong>PeerJSの初期化に失敗:</strong> ${error.message}. インターネット接続を確認してください。`, true);
@@ -318,7 +318,8 @@
         }
 
         function handleReceivedData(data, fromPeer) {
-            console.log(`Data received from ${fromPeer}, type: ${typeof data}`, data);
+            // データ型とコンストラクタ名をログに出力
+            console.log(`Data received from ${fromPeer}, type: ${typeof data}, constructor: ${data ? data.constructor.name : 'null/undefined'}`, data);
             if (typeof data === 'string') {
                 try {
                     const parsedData = JSON.parse(data);
@@ -375,8 +376,38 @@
                 const progress = fileInfoForReceiver.size > 0 ? ((receivedSize / fileInfoForReceiver.size) * 100).toFixed(1) : 0;
                 updateStatus(`ファイルチャンク受信 (<strong>${fromPeer}</strong>): <strong>${fileInfoForReceiver.name}</strong> (${progress}%) - ${receivedSize.toLocaleString()}/${fileInfoForReceiver.size.toLocaleString()} bytes`);
             } else {
-                updateStatus(`<strong>警告:</strong> 不明なデータ型を受信しました (<strong>${fromPeer}</strong>): ${typeof data}`, true);
-                console.log("Unknown data received:", data);
+                // 不明なデータ型の場合のログとステータスメッセージを強化
+                let dataTypeDetail = typeof data;
+                if (data && data.constructor && data.constructor.name) {
+                    dataTypeDetail += ` (constructor: ${data.constructor.name})`;
+                } else if (data) { // constructor.name がない場合でも、Object.prototype.toString で詳細を取得
+                    dataTypeDetail += ` (specific type: ${Object.prototype.toString.call(data)})`;
+                } else if (data === null) {
+                    dataTypeDetail = 'null';
+                }
+
+                updateStatus(`<strong>警告:</strong> 不明なデータ型を受信しました (<strong>${fromPeer}</strong>): ${dataTypeDetail}。詳細はコンソールを確認してください。`, true);
+                
+                console.warn("--- Unknown Data Received Details ---");
+                console.warn("Peer ID:", fromPeer);
+                console.warn("typeof data:", typeof data);
+                if (data !== null && data !== undefined) {
+                    console.warn("data.constructor:", data.constructor);
+                    if (data.constructor) {
+                        console.warn("data.constructor.name:", data.constructor.name);
+                    }
+                    console.warn("Object.prototype.toString.call(data):", Object.prototype.toString.call(data));
+                    // もしオブジェクトならキーを列挙してみる
+                    if (typeof data === 'object') {
+                        console.warn("Keys of the object:", Object.keys(data));
+                    }
+                }
+                console.warn("Actual data object received:", data); // オブジェクトそのものをログに出力
+
+                if (data instanceof Blob) {
+                    console.warn("The unknown data is an instance of Blob. Size:", data.size, "Type:", data.type);
+                }
+                console.warn("--- End of Unknown Data Details ---");
             }
         }
 
@@ -395,7 +426,7 @@
                 try {
                     const newConnAttempt = peer.connect(targetPeerId, {
                         reliable: true,
-                        serialization: 'binary'
+                        serialization: 'binary' // データ型に応じて'json', 'binary-utf8', 'none'も選択可
                     });
                     conn = newConnAttempt;
                     setupConnectionEvents(conn);
