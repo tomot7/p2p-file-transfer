@@ -30,11 +30,12 @@
             margin: 0 auto; /* 中央揃え */
         }
 
-        /* 見出しのスタイル調整 */
-        h1, h2, h3 {
-            color: #333; /* 見出しの色を統一 */
+        /* ヘッダーのスタイル調整 */
+        header {
+            position: relative; /* マニュアルボタンの位置調整のため */
+            margin-bottom: 1.5rem; /* マニュアルボタンとのスペース確保 */
         }
-        h1 {
+        header h1 {
             text-align: center;
             margin-bottom: 0.5rem;
             color: #9b4dca; /* Milligramのプライマリカラー */
@@ -42,7 +43,17 @@
         header p {
             text-align: center;
             color: #777;
-            margin-bottom: 2.5rem;
+            margin-bottom: 1rem; /* 少しマージンを減らす */
+        }
+        #manualBtnContainer { /* マニュアルボタンのコンテナ */
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+
+
+        /* 見出しのスタイル調整 */
+        h2, h3 {
+            color: #333; /* 見出しの色を統一 */
         }
         h2 {
             margin-top: 2.5rem;
@@ -172,13 +183,17 @@
         .file-info-name {
             font-weight: bold;
             margin-right: 10px;
+            word-break: break-all; /* 長いファイル名がはみ出ないように */
         }
         .file-info-size {
             font-size: 0.85em;
             color: #555;
+            white-space: nowrap; /* サイズ表示が改行されないように */
         }
         .download-icon { /* FontAwesomeなどのアイコンフォントを使う場合はここで指定 */
             margin-right: 8px;
+            display: inline-block; /* 絵文字がベースラインからずれる場合があるので調整 */
+            vertical-align: middle;
         }
 
 
@@ -194,23 +209,37 @@
             display: flex;
             align-items: center;
             justify-content: center;
+            padding: 1rem; /* モーダルが画面端にくっつかないように */
         }
         .modal-panel {
             background: white;
-            padding: 2.5rem; /* パディングを広げる */
+            padding: 2rem 2.5rem; /* パディングを調整 */
             border-radius: 8px;
-            min-width: 320px;
-            max-width: 500px;
+            min-width: 300px; /* 最小幅 */
+            max-width: 60rem; /* マニュアル用に最大幅を広げる */
+            max-height: 90vh; /* 高さが画面を超えないように */
+            overflow-y: auto; /* 内容が多い場合にスクロール */
             box-shadow: 0 5px 20px rgba(0,0,0,0.25);
         }
         .modal-panel h3 {
             margin-top: 0;
             margin-bottom: 1.5rem;
             color: #9b4dca;
+            text-align: center;
         }
-        .modal-panel p {
+        .modal-panel p, .modal-panel ul {
             margin-bottom: 1rem;
-            line-height: 1.6;
+            line-height: 1.7; /* 行間を少し広げて読みやすく */
+        }
+        .modal-panel ul {
+            list-style-position: inside;
+            padding-left: 0; /* Milligramのulスタイルを調整 */
+        }
+        .modal-panel li {
+            margin-bottom: 0.5rem;
+        }
+        .modal-panel strong { /* マニュアル内の強調表示 */
+            color: #7e3a9e;
         }
         .modal-buttons {
             margin-top: 2rem;
@@ -239,6 +268,9 @@
         <header>
             <h1>P2P ファイル転送</h1>
             <p>PeerJS Cloud & WebRTC (Milligram UI)</p>
+            <div id="manualBtnContainer">
+                <button type="button" id="manualBtn" class="button button-outline">マニュアル</button>
+            </div>
         </header>
 
         <section id="my-peer-info-section">
@@ -307,6 +339,59 @@
         </div>
     </div>
 
+    <div id="manualModal" class="modal-overlay hidden">
+        <div class="modal-panel">
+            <h3>アプリの使い方 (P2P ファイル転送)</h3>
+            <p>このアプリは、Peer-to-Peer (P2P) 技術を利用して、ブラウザ間で直接ファイルを安全に転送するツールです。サーバーを経由しないため、プライバシーが保護され、高速なファイル共有が可能です。</p>
+            
+            <h4>自分のPeer IDを取得する</h4>
+            <ul>
+                <li>ページ上部の「あなたの情報」セクションで、<strong>任意のPeer ID</strong>（6文字以上の英数字とハイフン）を入力するか、空欄のままにして自動生成させます。</li>
+                <li>「<strong>このIDで開始 / ID自動生成</strong>」ボタンをクリックします。</li>
+                <li>成功すると、「現在のあなたのPeer ID」にあなたのIDが表示されます。このIDをファイルの送受信相手に伝えてください。</li>
+            </ul>
+
+            <h4>相手に接続する</h4>
+            <ul>
+                <li>「相手に接続リクエスト」セクションの入力欄に、相手から教えてもらった<strong>Peer IDを入力</strong>します。</li>
+                <li>「<strong>リクエスト送信</strong>」ボタンをクリックします。</li>
+                <li>相手が接続を承諾すると、ステータスが更新されます。<strong>接続をリクエストした側（あなた）が</strong>ファイル送信を行えるようになります。</li>
+            </ul>
+
+            <h4>ファイルを送信する</h4>
+            <ul>
+                <li>相手との接続が確立されると、「ファイル送信」セクションが利用可能になります。</li>
+                <li>「<strong>ファイルを選択</strong>」ボタン（または隣の「選択されていません」と表示されているエリア）をクリックし、送信したいファイルを選びます。</li>
+                <li>「<strong>選択したファイルを送信</strong>」ボタンをクリックすると、ファイルが相手に送信されます。送信状況はステータスエリアに表示されます。</li>
+            </ul>
+
+            <h4>ファイルを受信する</h4>
+            <ul>
+                <li>相手からファイルが送信されると、自動的に受信が開始されます。受信状況はステータスエリアに表示されます。</li>
+                <li>受信が完了すると、「受信したファイル」セクションに<strong>ダウンロードリンクが表示</strong>されます。</li>
+                <li>リンクをクリックすると、ファイルをダウンロードできます。</li>
+            </ul>
+
+            <h4>接続リクエストの承諾/拒否</h4>
+            <ul>
+                <li>他のユーザーから接続リクエストがあると、画面中央にモーダルウィンドウが表示されます。</li>
+                <li>リクエスト元のPeer IDと受信時刻を確認し、「<strong>承諾する</strong>」または「<strong>拒否する</strong>」ボタンで応答してください。</li>
+            </ul>
+            
+            <h4>注意点</h4>
+            <ul>
+                <li>ファイルの送受信を行うには、<strong>両方のユーザーがこのページを開いている</strong>必要があります。</li>
+                <li>ブラウザの互換性やネットワーク環境（特にファイアウォールやNATの設定）によっては、接続が不安定になったり、失敗したりする場合があります。</li>
+                <li>大きなサイズのファイルの転送には時間がかかることがあります。</li>
+                <li>ページを閉じたり再読み込みしたりすると、Peer IDや接続はリセットされます。</li>
+            </ul>
+
+            <div class="modal-buttons">
+                <button type="button" id="closeManualModalBtn" class="button-primary">閉じる</button>
+            </div>
+        </div>
+    </div>
+
     <script>
         // Element selectors
         const myPeerIdElement = document.getElementById('myPeerId');
@@ -327,11 +412,18 @@
         const connectionManagementSection = document.getElementById('connection-management-section');
         const fileTransferSection = document.getElementById('file-transfer-section');
 
+        // Connection Request Modal elements
         const connectionRequestModal = document.getElementById('connectionRequestModal');
         const incomingPeerIdElement = document.getElementById('incomingPeerId');
         const requestTimeElement = document.getElementById('requestTime');
         const acceptConnBtn = document.getElementById('acceptConnBtn');
         const rejectConnBtn = document.getElementById('rejectConnBtn');
+
+        // Manual Modal elements
+        const manualBtn = document.getElementById('manualBtn');
+        const manualModal = document.getElementById('manualModal');
+        const closeManualModalBtn = document.getElementById('closeManualModalBtn');
+
 
         // PeerJS variables
         let peer = null;
@@ -454,7 +546,6 @@
                     updateStatus(`接続先のピア (<strong>${peerIdInputElement.value || '指定されたID'}</strong>) が見つかりません。IDを確認してください。`, 'error');
                 } else if (['network', 'server-error', 'socket-error', 'socket-closed', 'disconnected'].includes(err.type)) {
                      updateStatus('<strong>ネットワークまたはサーバーエラー:</strong> PeerJS Cloudに接続できません。インターネット接続を確認し、しばらくしてから再試行してください。', 'error');
-                     // Potentially reset UI states if connection is critically lost
                 }
                 if (!conn || !conn.open) {
                     connectBtn.disabled = false;
@@ -464,14 +555,10 @@
 
             peer.on('disconnected', () => {
                 updateStatus('<strong>PeerServer Cloudから切断されました。</strong> 自動再接続を試みます...', 'error');
-                // PeerJS attempts to reconnect automatically by default.
-                // You might want to disable UI elements here until reconnected.
             });
 
             peer.on('close', () => {
                 updateStatus('<strong>Peer接続が完全に閉じられました。</strong> アプリケーションをリロードする必要があるかもしれません。', 'error');
-                // This is called when peer.destroy() is called or the peer is destroyed from the server side.
-                // Disable all interactive elements.
                 startPeerBtn.disabled = true;
                 connectBtn.disabled = true;
                 sendBtn.disabled = true;
@@ -722,7 +809,6 @@
             const fileSizeMB = (blob.size / (1024 * 1024)).toFixed(2);
             const displaySize = blob.size === 0 ? '0 KB' : (blob.size < 1024*1024 ? `${fileSizeKB} KB` : `${fileSizeMB} MB`);
 
-            // Simple text link, can be enhanced with icons via CSS if needed
             a.innerHTML = `
                 <span class="download-icon">&#x1F4CE;</span> <span class="file-info-name" title="${fileName}">${fileName}</span>
                 <span class="file-info-size">(${displaySize})</span>
@@ -730,8 +816,8 @@
             
             const existingLink = Array.from(receivedFilesContainer.children).find(child => child.tagName === 'A' && child.download === fileName);
             if (existingLink) {
-                URL.revokeObjectURL(existingLink.href); // Revoke old URL
-                existingLink.href = url; // Update with new URL
+                URL.revokeObjectURL(existingLink.href); 
+                existingLink.href = url; 
                 existingLink.querySelector('.file-info-name').textContent = `(再) ${fileName}`;
                 existingLink.querySelector('.file-info-name').title = `(再) ${fileName}`;
                 existingLink.querySelector('.file-info-size').textContent = `(${displaySize})`;
@@ -750,13 +836,34 @@
 
             disableSection(connectionManagementSection);
             disableSection(fileTransferSection);
-            fileTransferSection.classList.add('hidden'); // Initially hidden
+            fileTransferSection.classList.add('hidden'); 
 
             peerIdDisplayContainer.classList.add('hidden');
             myPeerIdElement.textContent = '未初期化';
             idValidationErrorElement.textContent = '';
             fileInputLabel.textContent = '選択されていません';
         }
+
+        // Manual Modal Logic
+        if (manualBtn && manualModal && closeManualModalBtn) {
+            manualBtn.addEventListener('click', () => {
+                manualModal.classList.remove('hidden');
+            });
+
+            closeManualModalBtn.addEventListener('click', () => {
+                manualModal.classList.add('hidden');
+            });
+
+            // Close modal if overlay is clicked
+            manualModal.addEventListener('click', (event) => {
+                if (event.target === manualModal) {
+                    manualModal.classList.add('hidden');
+                }
+            });
+        } else {
+            console.error("Manual modal elements not found. Check IDs: manualBtn, manualModal, closeManualModalBtn");
+        }
+
 
         window.addEventListener('beforeunload', () => {
             if (pendingConnection) {
@@ -765,7 +872,7 @@
             if (conn) {
                 conn.close();
             }
-            if (peer && !peer.destroyed) { // Check if peer exists and not already destroyed
+            if (peer && !peer.destroyed) { 
                 peer.destroy();
             }
         });
